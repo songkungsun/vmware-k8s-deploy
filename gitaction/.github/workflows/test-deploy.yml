@@ -1,0 +1,47 @@
+name: Test Deployment Fetching
+
+on:
+  workflow_dispatch:  # 웹에서 수동 실행 가능
+
+jobs:
+  test-deploy:
+    runs-on: self-hosted  # 로컬 실행 (VMware VM 내부)
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Fetch Deployment Info from DB and Display
+        run: |
+          echo "Fetching service paths from PostgreSQL..."
+          
+          # PostgreSQL에서 서비스 목록 가져오기
+          SERVICES=$(sudo -u postgres psql -d mydatabase -t -c "SELECT name, file_path FROM ServiceTemplate;")
+          
+          echo "Found services:"
+          echo "$SERVICES"
+          
+          # 각 서비스 폴더의 내용을 표시 (테스트용)
+          while IFS='|' read -r SERVICE_NAME FILE_PATH; do
+            FILE_PATH=$(echo $FILE_PATH | xargs)  # 공백 제거
+            echo "----------------------------------------"
+            echo "Service: $SERVICE_NAME"
+            echo "Path: $FILE_PATH"
+            
+            # 배포 스크립트 존재 여부 확인 후 내용 표시
+            if [[ -f "$FILE_PATH/scripts/deploy.sh" ]]; then
+              echo ">> Showing deploy.sh content:"
+              cat "$FILE_PATH/scripts/deploy.sh"
+            else
+              echo ">> No deploy.sh found."
+            fi
+            
+            # YAML 파일 존재 여부 확인 후 내용 표시
+            if [[ -f "$FILE_PATH/yaml/deployment.yaml" ]]; then
+              echo ">> Showing deployment.yaml content:"
+              cat "$FILE_PATH/yaml/deployment.yaml"
+            else
+              echo ">> No deployment.yaml found."
+            fi
+          done <<< "$SERVICES"
+
