@@ -1,0 +1,49 @@
+name: Deploy Nginx on External K8s Server
+
+on:
+  workflow_dispatch:  # 수동 실행 가능하도록 설정
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # GitHub Actions 서버 (192.168.179.100)에서 실행됨
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Fetch Nginx Deployment Info from Remote DB
+        run: |
+          echo "Fetching Nginx deployment information from PostgreSQL (192.168.179.134)..."
+          
+          # PostgreSQL에서 nginx-web 배포 정보 가져오기
+          SERVICE_INFO=$(ssh -o StrictHostKeyChecking=no postgres@192.168.179.134 "psql -d mydatabase -t -c \"SELECT name, deploy_script FROM ServiceTemplate WHERE name = 'nginx-web';\"")
+
+          echo "Found Nginx service info:"
+          echo "$SERVICE_INFO"
+
+          SERVICE_NAME=$(echo "$SERVICE_INFO" | awk -F '|' '{print $1}' | xargs)
+          DEPLOY_SCRIPT=$(echo "$SERVICE_INFO" | awk -F '|' '{print $2}' | xargs)
+
+          echo "----------------------------------------"
+          echo "Service: $SERVICE_NAME"
+          echo "Deploy Script Path: $DEPLOY_SCRIPT"
+
+          # SSH로 192.168.179.134에 접속하여 배포 스크립트 확인
+          ssh -o StrictHostKeyChecking=no root@192.168.179.134 << EOF
+            echo "Checking deployment script on 192.168.179.134..."
+            if [[ -f "$DEPLOY_SCRIPT" ]]; then
+              echo ">> Showing deploy.sh content:"
+              cat "$DEPLOY_SCRIPT"
+            else
+              echo ">> No deploy.sh found."
+            fi
+
+            # YAML 파일 존재 여부 확인 후 내용 표시
+            YAML_FILE="/var/lib/pgsql/16/data/service_templates/nginx-web/yaml/deployment.yaml"
+            if [[ -f "$YAML_FILE" ]]; then
+              echo ">> Showing deployment.yaml content:"
+              cat "$YAML_FILE"
+            else
+              echo ">> No deployment.yaml found."
+            fi
+          EOF
