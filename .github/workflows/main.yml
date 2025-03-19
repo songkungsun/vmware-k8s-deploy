@@ -5,7 +5,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted  # GitHub Actions 서버 (192.168.179.100)에서 실행됨
+    runs-on: self-hosted  # GitHub Actions 서버 (192.168.179.134)에서 실행됨
 
     steps:
       - name: Checkout Repository
@@ -16,7 +16,7 @@ jobs:
           echo "Fetching Nginx deployment information from PostgreSQL (192.168.179.134)..."
           
           # PostgreSQL에서 nginx-web 배포 정보 가져오기
-          SERVICE_INFO=$(ssh -o StrictHostKeyChecking=no postgres@192.168.179.134 "psql -d mydatabase -t -c \"SELECT name, deploy_script FROM ServiceTemplate WHERE name = 'nginx-web';\"")
+          SERVICE_INFO=$(ssh -o StrictHostKeyChecking=no postgres@192.168.179.134 "psql -d solmakasedb -t -c \"SELECT name, deploy_script FROM servicetemplate WHERE name = 'nginx-web';\"")
 
           echo "Found Nginx service info:"
           echo "$SERVICE_INFO"
